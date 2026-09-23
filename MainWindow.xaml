@@ -1,0 +1,74 @@
+﻿<Window x:Class="CCcut.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CCcut"
+        mc:Ignorable="d"
+        xmlns:fl="clr-namespace:FlyleafLib.Controls.WPF;assembly=FlyleafLib"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        Icon="icon.ico"
+        Title="CCcut" Height="600" Width="900">
+
+    <Window.Resources>
+        <!-- 声明转换器资源 -->
+        <local:TicksToTimeStrConverter x:Key="TicksConverter"/>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- 操作栏 -->
+            <RowDefinition Height="*"/>
+            <!-- 视频播放区 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 预留给步骤二的时间轴区域 -->
+        </Grid.RowDefinitions>
+
+        <!-- 顶部操作栏 -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+            <Button Content="打开视频" Command="{Binding OpenVideoCommand}" />
+            <TextBlock Text="{Binding VideoPath}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- Flyleaf 视频播放器渲染控件 -->
+        <Border Grid.Row="1" Background="Black" CornerRadius="4" ClipToBounds="True">
+            <!-- 核心：使用 Flyleaf 提供的高性能原生 Windows 窗体宿主控件 -->
+            <fl:FlyleafHost Player="{Binding VideoPlayer}" KeyBindings="Surface">
+            </fl:FlyleafHost>
+        </Border>
+
+        <!-- 步骤二预留区域 -->
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+            </Grid.RowDefinitions>
+            
+            <hc:RangeSlider Grid.Row="0" 
+                            Minimum="0"
+                            Maximum="{Binding DurationTicks, Mode=OneWay}" 
+                            ValueStart="{Binding StartTimeTicks, Mode=TwoWay, Delay=150}"
+                            ValueEnd="{Binding EndTimeTicks, Mode=TwoWay, Delay=150}"
+                            SmallChange="{Binding VideoPlayer.Config.Player.SeekOffset}"
+                            >
+                <hc:Interaction.Triggers>
+                    <hc:EventTrigger EventName="ValueChanged">
+                        <hc:EventToCommand Command="{Binding RangeChangedCommand}"/>
+                    </hc:EventTrigger>
+                </hc:Interaction.Triggers>
+            </hc:RangeSlider>
+            
+            <Grid Grid.Row="1" Margin="5,8,5,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding VideoPlayer.CurTime, Converter={StaticResource TicksConverter}, StringFormat='当前播放位置: {0}'}" />
+                    <TextBlock Text="{Binding VideoPlayer.Duration, Converter={StaticResource TicksConverter}, StringFormat='视频结束: {0}'}" />
+                    <TextBlock Text="{Binding StartTimeTicks, Converter={StaticResource TicksConverter}, StringFormat='区间开始: {0}'}" />
+                    <TextBlock Text="{Binding EndTimeTicks, Converter={StaticResource TicksConverter}, StringFormat='区间结束: {0}'}" />
+                </StackPanel>
+
+                <Button Content="从起点播放" Command="{Binding PlayFromStartCommand}"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
