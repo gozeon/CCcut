@@ -74,6 +74,10 @@ namespace CCcut
                     //});
                     break;
                 case nameof(Player.CurTime):
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        CurTime = VideoPlayer.CurTime;
+                    });
                     //if(VideoPlayer.CurTime >= EndTimeTicks)
                     //{
                     //    Application.Current.Dispatcher.Invoke(() =>
