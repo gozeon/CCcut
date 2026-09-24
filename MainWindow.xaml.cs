@@ -19,7 +19,12 @@ namespace CCcut
         public MainWindow()
         {
             InitializeComponent();
-            this.DataContext = new MainViewModel();
+            this.DataContext = new MainViewModel(new WindowsFileDialogService());
+
+            LogTextBox.TextChanged += (s, e) =>
+            {
+                LogTextBox.ScrollToEnd();
+            };
         }
     }
 }

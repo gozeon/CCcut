@@ -22,7 +22,7 @@ namespace CCcut
                 //}
                 //return time.ToString(@"mm\:ss");
 
-                return time.ToString(@"hh\:mm\:ss");
+                return time.ToString(@"hh\:mm\:ss\.fff");
             }
             return "00:00";
         }

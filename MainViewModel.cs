@@ -2,37 +2,49 @@
 using CommunityToolkit.Mvvm.Input;
 using FlyleafLib;
 using FlyleafLib.MediaPlayer;
-using Microsoft.Win32;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 
 namespace CCcut
 {
+    public class TickItem
+    {
+        public double Ratio { get; set; }
+        public string Lablel { get; set; }
+        public double TickHeight { get; set; }
+    }
     internal partial class MainViewModel : ObservableObject, IDisposable
     {
+        private readonly IFileDialogService _fileDialogService;
+
+        [ObservableProperty]
+        private string _playButtonText = "播放";
+
+        [ObservableProperty]
+        private string _logText = string.Empty;
+
         [ObservableProperty]
         private Player _videoPlayer;
 
         [ObservableProperty]
-        private string _videoPath;
+        private string _videoPath = string.Empty;
 
         [ObservableProperty]
-        private long _startTimeTicks;
-        
+        private long _curTime;
 
-        [ObservableProperty]
-        private long _endTimeTicks;
+        public ObservableCollection<TickItem> Ticks { get; } = new ObservableCollection<TickItem>();
 
-        [ObservableProperty]
-        private long _durationTicks;
 
-        private bool _isSeekingLock = false;
-
-        public MainViewModel()
+        public MainViewModel(IFileDialogService fileDialogService)
         {
+            _fileDialogService = fileDialogService;
+
             Config playerConfig = new Config();
             //playerConfig.Video.BackColor = System.Windows.Media.Colors.White;
-            playerConfig.Player.SeekAccurate = true;
+            //playerConfig.Player.SeekAccurate = true;
+            playerConfig.Player.Stats = true;
+            //playerConfig.Player.AutoPlay = false;
 
             VideoPlayer = new Player(playerConfig);
 
@@ -41,88 +53,67 @@ namespace CCcut
 
         private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (_isSeekingLock) return;
+            AppendLog($"OnPlayerPropertyChanged PropertyName: {e.PropertyName}");
 
             switch (e.PropertyName)
             {
-                case nameof(Player.Duration):
+                case nameof(Player.BufferedDuration):
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        DurationTicks = VideoPlayer.Duration;
-                        if(EndTimeTicks == 0)
-                        {
-                            EndTimeTicks = VideoPlayer.Duration;
-                        }
+                        CurTime = VideoPlayer.CurTime;
                     });
                     break;
+                case nameof(Player.Duration):
+                    //Application.Current.Dispatcher.Invoke(() =>
+                    //{
+                    //    DurationTicks = VideoPlayer.Duration;
+                    //    if(EndTimeTicks == 0)
+                    //    {
+                    //        EndTimeTicks = VideoPlayer.Duration;
+                    //    }
+                    //});
+                    break;
                 case nameof(Player.CurTime):
-                    if(VideoPlayer.CurTime >= EndTimeTicks)
-                    {
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            try
-                            {
-                                _isSeekingLock = true;
-                                VideoPlayer.Pause();
-                                VideoPlayer.Seek((int)StartTimeTicks/10000);
-                            }
-                            finally
-                            {
-                                _isSeekingLock = false;
-                            }
-                        });
-                    }
+                    //if(VideoPlayer.CurTime >= EndTimeTicks)
+                    //{
+                    //    Application.Current.Dispatcher.Invoke(() =>
+                    //    {
+                    //        try
+                    //        {
+                    //            _isSeekingLock = true;
+                    //            VideoPlayer.Pause();
+                    //            VideoPlayer.Seek((int)StartTimeTicks/10000);
+                    //        }
+                    //        finally
+                    //        {
+                    //            _isSeekingLock = false;
+                    //        }
+                    //    });
+                    //}
+                    break;
+                case nameof(Player.Status):
+                    PlayButtonText = VideoPlayer.Status == Status.Playing ? "暂停" : "播放";
                     break;
             }
         }
 
-        [RelayCommand]
-        private void PlayFromStart()
+        private void AppendLog(string text)
         {
-            if (VideoPlayer == null) return;
-
-            VideoPlayer.Seek((int)StartTimeTicks/10000);
-            VideoPlayer.Play();
-        }
-
-        [RelayCommand]
-        private void RangeChanged()
-        {
-            if (VideoPlayer == null || _isSeekingLock) return;
-
-            try
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                _isSeekingLock = true;
-
-                if(VideoPlayer.CurTime < StartTimeTicks)
-                {
-                    VideoPlayer.Seek((int)StartTimeTicks/10000);
-                }
-                else if(VideoPlayer.CurTime>EndTimeTicks)
-                {
-                    VideoPlayer.Seek((int)EndTimeTicks/10000);
-                }
-            }
-            finally
-            {
-                _isSeekingLock = false;
-            }
+                LogText += $"[{DateTime.Now:HH:mm:ss.fff}] {text.TrimEnd('\r', '\n') + Environment.NewLine}";
+            });
         }
-
+        
         [RelayCommand]
         private void OpenVideo()
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog
+            string? filePath = _fileDialogService.OpenVideoFile("视频文件|*.mp4;*.mkv;*.avi;*.mov");
+            if(!string.IsNullOrEmpty(filePath))
             {
-                Filter = "视频文件|*.mp4;*.mkv;*.avi;*.mov",
-                Title = "选择视频文件",
-                CheckFileExists = true,
-            };
-
-            if (openFileDialog.ShowDialog() == true)
-            {
-                VideoPath = openFileDialog.FileName;
+                VideoPath = filePath;
                 VideoPlayer.Open(VideoPath);
+                AppendLog($"打开文件 {VideoPath}");
             }
         }
 

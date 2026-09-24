@@ -26,13 +26,13 @@ namespace CCcut
                 LogLevel = LogLevel.Debug,
                 LogOutput = ":debug",
                 //LogOutput         = ":console",
-                //LogOutput         = @"C:\Flyleaf\Logs\flyleaf.log",                
+                //LogOutput         = @"C:\Flyleaf\Logs\flyleaf.log",
 #endif
 
-                UIRefresh = false,
-                UIRefreshInterval = 250,
-
-
+                UIRefresh = true,
+                // 16 = 60 fps
+                UIRefreshInterval = 1,
+                
             });
         }
     }
