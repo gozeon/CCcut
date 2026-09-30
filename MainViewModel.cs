@@ -23,7 +23,7 @@ namespace CCcut
         private readonly IFileDialogService _fileDialogService;
 
         public ObservableCollection<VideoParagraphModel> Paragraphs { get; set; } = new ObservableCollection<VideoParagraphModel>();
-        public VideoParagraphModel _activeParagraph;
+        public VideoParagraphModel _activeParagraph = default!;
         public VideoParagraphModel ActiveParagraph {
             get => _activeParagraph;
             set
@@ -70,19 +70,6 @@ namespace CCcut
         [ObservableProperty]
         private double _hoverX;          // 鼠标悬停时的实时 X 像素坐标
 
-        [ObservableProperty]
-        private string _hoverTimeText = "00:00";  // 悬停气泡显示的时间文本
-
-        public void SeekByRatio(double ratio)
-        {
-            if (VideoPlayer == null || VideoPlayer.Duration <= 0) return;
-            //var msDuration = VideoPlayer.Duration / 10_000;
-            //VideoPlayer.SeekAccurate((int)(ratio * msDuration));
-
-            // need playerConfig.Player.SeekAccurate = true;
-            VideoPlayer.CurTime = (long)(ratio * VideoPlayer.Duration);
-        }
-
         public MainViewModel(IFileDialogService fileDialogService)
         {
             _fileDialogService = fileDialogService;
@@ -99,9 +86,21 @@ namespace CCcut
             VideoPlayer.PropertyChanged += OnPlayerPropertyChanged;
         }
 
+        public void SeekByRatio(double ratio)
+        {
+            if (VideoPlayer == null || VideoPlayer.Duration <= 0) return;
+            //var msDuration = VideoPlayer.Duration / 10_000;
+            //VideoPlayer.SeekAccurate((int)(ratio * msDuration));
+
+            // need playerConfig.Player.SeekAccurate = true;
+            VideoPlayer.CurTime = (long)(ratio * VideoPlayer.Duration);
+
+            AppendLog($"定位到: {VideoPlayer.CurTime}");
+
+        }
+
         private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            AppendLog($"OnPlayerPropertyChanged PropertyName: {e.PropertyName}");
             switch (e.PropertyName)
             {
                 case nameof(Player.BufferedDuration):
@@ -143,6 +142,7 @@ namespace CCcut
             {
                 VideoPath = filePath;
                 VideoPlayer.Open(VideoPath);
+
                 AppendLog($"打开文件 {VideoPath}");
             }
         }
@@ -160,6 +160,8 @@ namespace CCcut
 
             Paragraphs.Add(item);
             ActiveParagraph = item;
+
+            AppendLog($"新增段落: {item.Title}");
         }
 
         [RelayCommand]
@@ -169,6 +171,8 @@ namespace CCcut
             foreach(var item in selectItems)
             {
                 Paragraphs.Remove(item);
+
+                AppendLog($"删除段落: {item.Title}");
             }
         }
 
@@ -176,6 +180,7 @@ namespace CCcut
         private async Task SplitParagraph()
         {
             var selectItems = Paragraphs.Where(i => i.IsSelect).ToList();
+
             foreach (var item in selectItems)
             {
                 // 将时间字符串中的 ":" 和 "." 替换为 "-"，使其符合文件名规范
@@ -190,8 +195,12 @@ namespace CCcut
                 string fileName = $"{safeStart}-{safeEnd}_{safeTitle}{Path.GetExtension(VideoPath)}";
                 string folderName = Path.GetFileNameWithoutExtension(VideoPath);
                 string output = Path.Combine(VideoPlayer.Config.Player.FolderRecordings, folderName, fileName);
+
+                AppendLog($"开始拆分{output}！");
+
                 if (Path.Exists(output))
                 {
+                    AppendLog($"{fileName} 已存在，跳过！");
                     continue;
                 }
                 IConversion conversion = await FFmpeg.Conversions.FromSnippet.Split(VideoPath, output, TimeSpan.FromTicks(item.StartTicks), TimeSpan.FromTicks(item.DurationTicks));
@@ -203,6 +212,8 @@ namespace CCcut
                 IConversionResult result = await conversion.Start();
                 AppendLog($"{fileName} 完成!");
             }
+
+            AppendLog($"成功拆分 {selectItems.Count()} 个段落!");
         }
 
         public static Color GetRandomLightColor(Random random)
@@ -234,6 +245,8 @@ namespace CCcut
                         ActiveParagraph.StartTicks = VideoPlayer.CurTime;
                         ActiveParagraph.EndTicks = Math.Min(VideoPlayer.CurTime + durationTicks, VideoPlayer.Duration);
                     }
+
+                    AppendLog($"{ActiveParagraph.Title} 开始位置 对齐了 游标！");
                     break;
                 case AlignDirection.Right:
                     if(VideoPlayer.CurTime - ActiveParagraph.StartTicks > TimeSpan.FromSeconds(5).Ticks)
@@ -246,6 +259,8 @@ namespace CCcut
                         ActiveParagraph.EndTicks = VideoPlayer.CurTime;
                         ActiveParagraph.StartTicks = Math.Max(0, ActiveParagraph.EndTicks - durationTicks);
                     }
+
+                    AppendLog($"{ActiveParagraph.Title} 结束位置 对齐了 游标！");
                     break;
             }
         }
@@ -254,6 +269,67 @@ namespace CCcut
         public void Dispose()
         {
             VideoPlayer?.Dispose();
+        }
+
+        internal void BodyThumb_DragDelta(VideoParagraphModel item, double horizontalChange, double canvasWidth)
+        {
+            double ticksPerPixel = (double)VideoPlayer.Duration / canvasWidth;
+            long deltaTicks = (long)(horizontalChange * ticksPerPixel);
+            long predictedStart = item.StartTicks + deltaTicks;
+            long predictedEnd = predictedStart + item.DurationTicks;
+
+            if (predictedStart < 0)
+            {
+                predictedStart = 0;
+                predictedEnd = item.DurationTicks;
+            }
+            else if (predictedEnd > VideoPlayer.Duration)
+            {
+                predictedStart = VideoPlayer.Duration - item.DurationTicks;
+                predictedEnd = VideoPlayer.Duration;
+            }
+            item.StartTicks = predictedStart;
+            item.EndTicks = predictedEnd;
+
+        }
+
+        internal void LeftThumb_DragDelta(VideoParagraphModel item, double horizontalChange, double canvasWidth)
+        {
+            double ticksPerPixel = (double)VideoPlayer.Duration / canvasWidth;
+            long deltaTicks = (long)(horizontalChange * ticksPerPixel);
+
+            long predictedStart = item.StartTicks + deltaTicks;
+            if (predictedStart < 0)
+            {
+                predictedStart = 0;
+            }
+            long minTicks = TimeSpan.FromSeconds(5).Ticks;
+            if (predictedStart > item.EndTicks - minTicks)
+            {
+                predictedStart = item.EndTicks - minTicks;
+            }
+
+            item.StartTicks = predictedStart;
+        }
+
+        internal void RightThumb_DragDelta(VideoParagraphModel item, double horizontalChange, double canvasWidth)
+        {
+            double ticksPerPixel = (double)VideoPlayer.Duration / canvasWidth;
+            long deltaTicks = (long)(horizontalChange * ticksPerPixel);
+
+            long predictedEnd = item.EndTicks + deltaTicks;
+            if (predictedEnd > VideoPlayer.Duration)
+            {
+                predictedEnd = VideoPlayer.Duration;
+            }
+
+            long minTicks = TimeSpan.FromSeconds(5).Ticks;
+            if (predictedEnd < item.StartTicks + minTicks)
+            {
+                predictedEnd = item.StartTicks + minTicks;
+            }
+
+            item.EndTicks = predictedEnd;
         }
     }
 }

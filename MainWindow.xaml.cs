@@ -106,23 +106,8 @@ namespace CCcut
             //// 4. 最终一次性原子赋值，由于中间没有任何逻辑断层，UI 刷新绝对平滑
             //item.Left = predictedLeft;
 
-            double ticksPerPixel = (double)VM.VideoPlayer.Duration / canvasWidth;
-            long deltaTicks = (long)(e.HorizontalChange * ticksPerPixel);
-            long predictedStart = item.StartTicks + deltaTicks;
-            long predictedEnd = predictedStart + item.DurationTicks;
-
-            if(predictedStart <0)
-            {
-                predictedStart = 0;
-                predictedEnd = item.DurationTicks;
-            }
-            else if(predictedEnd>VM.VideoPlayer.Duration)
-            {
-                predictedStart = VM.VideoPlayer.Duration - item.DurationTicks;
-                predictedEnd = VM.VideoPlayer.Duration;
-            }
-            item.StartTicks = predictedStart;
-            item.EndTicks = predictedEnd;
+            
+            VM.BodyThumb_DragDelta(item, e.HorizontalChange, canvasWidth);
 
             _isMouseDown = false;
         }
@@ -166,22 +151,7 @@ namespace CCcut
             double canvasWidth = ProgressBarCanvas.ActualWidth;
             if (canvasWidth <= 0) return;
 
-            double ticksPerPixel = (double)VM.VideoPlayer.Duration / canvasWidth;
-            long deltaTicks = (long)(e.HorizontalChange * ticksPerPixel);
-
-            long predictedStart = item.StartTicks + deltaTicks;
-            if (predictedStart < 0)
-            {
-                predictedStart = 0;
-            }
-            long minTicks = TimeSpan.FromSeconds(5).Ticks;
-            if(predictedStart > item.EndTicks-minTicks)
-            {
-                predictedStart = item.EndTicks - minTicks;
-            }
-
-            item.StartTicks = predictedStart;
-
+            VM.LeftThumb_DragDelta(item, e.HorizontalChange, canvasWidth);
 
             _isMouseDown = false;
         }
@@ -220,22 +190,7 @@ namespace CCcut
             double canvasWidth = ProgressBarCanvas.ActualWidth;
             if (canvasWidth <= 0) return;
 
-            double ticksPerPixel = (double)VM.VideoPlayer.Duration / canvasWidth;
-            long deltaTicks = (long)(e.HorizontalChange * ticksPerPixel);
-
-            long predictedEnd = item.EndTicks + deltaTicks;
-            if (predictedEnd > VM.VideoPlayer.Duration)
-            {
-                predictedEnd = VM.VideoPlayer.Duration;
-            }
-
-            long minTicks = TimeSpan.FromSeconds(5).Ticks;
-            if (predictedEnd < item.StartTicks+minTicks)
-            {
-                predictedEnd = item.StartTicks + minTicks;
-            }
-
-            item.EndTicks = predictedEnd;
+            VM.RightThumb_DragDelta(item, e.HorizontalChange, canvasWidth);
 
             _isMouseDown = false;
         }

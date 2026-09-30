@@ -238,15 +238,24 @@
 
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button Content="开始对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Left}"></Button>
-                <Button Content="结束对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Right}"></Button>
-                <TextBlock Text="   "></TextBlock>
-                <Button Content="{Binding PlayButtonText}" Command="{Binding VideoPlayer.Commands.TogglePlayPause}" />
-                <TextBlock VerticalAlignment="Center" Margin="10,0,0,0">
-                    <Run Text="{Binding CurTime, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
-                    <Run Text="/"></Run>
-                    <Run Text="{Binding VideoPlayer.Duration, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
-                </TextBlock>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" HorizontalAlignment="Center" Margin="20,0,20,5" FontSize="16">
+                        <Run Text="{Binding CurTime, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
+                        <Run Text="/"></Run>
+                        <Run Text="{Binding VideoPlayer.Duration, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
+                    </TextBlock>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="开始对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Left}"></Button>
+                        <Button Style="{StaticResource ButtonInfo}" Margin="10,0,0,0" Content="{Binding PlayButtonText}" Command="{Binding VideoPlayer.Commands.TogglePlayPause}" />
+                        <Button Margin="10,0,0,0" Content="结束对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Right}"></Button>
+                    </StackPanel>
+                </Grid>
+
+                
             </StackPanel>
         </Grid>
 
