@@ -14,6 +14,7 @@
         <!-- 声明转换器资源 -->
         <local:TicksToTimeStrConverter x:Key="TicksConverter"/>
         <local:TicksToPixelConverter x:Key="TicksToPixel"/>
+        <local:TicksToWidthConverter x:Key="TicksToWidth"/>
     </Window.Resources>
 
     <Grid Margin="15">
@@ -38,15 +39,187 @@
                 <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
 
-            <!-- Flyleaf 视频播放器渲染控件 -->
-            <fl:FlyleafHost Grid.Row="0" Margin="0,0,0,10" Player="{Binding VideoPlayer}">
-            </fl:FlyleafHost>
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="Auto"></RowDefinition>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="240"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
 
-            <Canvas Grid.Row="1" Margin="0,0,0,10" Height="40" Background="Transparent" x:Name="ProgressBarCanvas">
+                <!-- Flyleaf 视频播放器渲染控件 -->
+                <fl:FlyleafHost Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"  Player="{Binding VideoPlayer}">
+                </fl:FlyleafHost>
 
-                <Rectangle Canvas.Top="4" Height="30"  Fill="#F8FAFC" RadiusX="3"  RadiusY="3" Width="{Binding ElementName=ProgressBarCanvas, Path=ActualWidth}" />
+                <ListBox Grid.Column="1" Margin="10,0,0,0" ItemsSource="{Binding Paragraphs}" SelectedItem="{Binding ActiveParagraph, Mode=TwoWay}" HorizontalContentAlignment ="Stretch">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                             
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                    <ColumnDefinition Width="*"></ColumnDefinition>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="10"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="*"></RowDefinition>
+                                    <RowDefinition Height="10"></RowDefinition>
+                                </Grid.RowDefinitions>
 
-                <Line Stroke="#FF0000" StrokeThickness="1" X1="0" Y1="0" X2="0" Y2="40">
+                                <CheckBox Grid.Column="0" Grid.Row="1" Margin="0,0,10,0" IsChecked="{Binding IsSelect, Mode=TwoWay}"></CheckBox>
+                                <TextBlock Grid.Column="1" Grid.Row="1" VerticalAlignment="Center">
+                                    <Run Text="{Binding StartTicks, Converter={StaticResource TicksConverter}}"></Run>
+                                    <Run>-</Run>
+                                    <Run Text="{Binding EndTicks , Converter={StaticResource TicksConverter}}"></Run>
+                                </TextBlock>
+
+                                <TextBox Grid.Column="1" Grid.Row="2" Margin="0,10,0,0" Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"></TextBox>
+                                     
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,10,0,0" Orientation="Horizontal">
+                    <Button Content="添加段落" Command="{Binding AddParagraphCommand}"></Button>
+                    <Button Style="{StaticResource ButtonDanger}" Margin="10,0,0,0" Content="删除段落" Command="{Binding RemoveParagraphCommand}"></Button>
+                    <Button Style="{StaticResource ButtonInfo}" Margin="10,0,0,0" Content="拆分段落" Command="{Binding SplitParagraphCommand}"></Button>
+                </StackPanel>
+            </Grid>
+
+            <Canvas Grid.Row="1" Margin="0,0,0,10" Height="60" Background="Transparent" x:Name="ProgressBarCanvas"
+                    MouseLeftButtonUp="ProgressBarCanvas_MouseLeftButtonUp"
+                    MouseLeftButtonDown="ProgressBarCanvas_MouseLeftButtonDown"
+                    MouseMove="ProgressBarCanvas_MouseMove"
+                    MouseLeave="ProgressBarCanvas_MouseLeave">
+
+                <Rectangle Canvas.Top="15" Height="30"  Fill="#D7E2EE" RadiusX="3"  RadiusY="3" Width="{Binding ElementName=ProgressBarCanvas, Path=ActualWidth}" />
+
+                <ItemsControl ItemsSource="{Binding Paragraphs}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas Width="{Binding ElementName=ProgressBarCanvas,Path=ActualWidth}"></Canvas>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Top" Value="15"/>
+                            <Setter Property="Canvas.ZIndex" Value="{Binding ZIndex}"/>
+                            <Setter Property="Canvas.Left">
+                                <Setter.Value>
+                                    <MultiBinding Converter="{StaticResource TicksToPixel}">
+                                        <Binding Path="StartTicks" />
+                                        <Binding RelativeSource="{RelativeSource AncestorType={x:Type Window}}" Path="DataContext.VideoPlayer.Duration" />
+                                        <Binding ElementName="ProgressBarCanvas" Path="ActualWidth" />
+                                    </MultiBinding>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="Width" >
+                                <Setter.Value>
+                                    <MultiBinding Converter="{StaticResource TicksToWidth}">
+                                        <Binding Path="DurationTicks" />
+                                        <Binding RelativeSource="{RelativeSource AncestorType={x:Type Window}}" Path="DataContext.VideoPlayer.Duration" />
+                                        <Binding ElementName="ProgressBarCanvas" Path="ActualWidth" />
+                                    </MultiBinding>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <!-- 选用 Border 容纳内部的三个交互手柄 -->
+                            <Border Height="30" CornerRadius="3" Opacity="0.7" HorizontalAlignment="Stretch">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{Binding ColorHex}"/>
+                                </Border.Background>
+                                <!-- Grid 内部横向切分为：[左边手柄(4px) | 中间拖拽区(自动) | 右边手柄(4px)] -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 1. 左边缘拉伸手柄 -->
+                                    <Thumb Grid.Column="0"  Cursor="SizeWE" DragDelta="LeftThumb_DragDelta" PreviewMouseLeftButtonDown="Thumb_PreviewMouseLeftButtonDown">
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <!-- 白色半透明竖条，视觉提示可以拉伸 -->
+                                                            <Rectangle Fill="#FFFFFF" Opacity="0.4"/>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+
+                                    <!-- 2. 中间整体拖拽区 -->
+                                    <Thumb Grid.Column="1" Cursor="Hand" DragDelta="BodyThumb_DragDelta" PreviewMouseLeftButtonDown="Thumb_PreviewMouseLeftButtonDown">
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <!-- 透明背景，保证中间能隐约看到文字或高亮色，且能捕捉鼠标操作 -->
+                                                            <Grid Background="Transparent">
+                                                                <!-- 你甚至可以在这里放个 TextBlock 显示 Title -->
+                                                                <TextBlock Text="{Binding Title}" Foreground="#1E293B" 
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                                           FontSize="11" FontWeight="Bold"/>
+                                                            </Grid>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+
+                                    <!-- 3. 右边缘拉伸手柄 -->
+                                    <Thumb Grid.Column="2" Cursor="SizeWE" DragDelta="RightThumb_DragDelta" PreviewMouseLeftButtonDown="Thumb_PreviewMouseLeftButtonDown">
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <Rectangle Fill="#FFFFFF" Opacity="0.4"/>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Line x:Name="HoverLine" Stroke="#FFA2A2" StrokeThickness="1" X1="0" Y1="0" X2="0" Y2="60" IsHitTestVisible="False">
+                    <Line.RenderTransform>
+                        <TranslateTransform X="{Binding HoverX}" />
+                    </Line.RenderTransform>
+                    <Line.Style>
+                        <Style TargetType="Line">
+                            <Setter Property="Opacity" Value="0" />
+                            <Style.Triggers>
+                                <!-- 只要鼠标划入进度条，立刻显示虚影 -->
+                                <DataTrigger Binding="{Binding ElementName=ProgressBarCanvas, Path=IsMouseOver}" Value="True">
+                                    <Setter Property="Opacity" Value="1" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Line.Style>
+                </Line>
+
+                <Line Stroke="#FB2C36" StrokeThickness="1" X1="0" Y1="0" X2="0" Y2="60" IsHitTestVisible="False">
                     <Line.RenderTransform>
                         <TranslateTransform x:Name="LineTransform">
                             <TranslateTransform.X>
@@ -62,24 +235,19 @@
 
             </Canvas>
 
-            <Grid  Grid.Row="2">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"></ColumnDefinition>
-                    <ColumnDefinition Width="*"></ColumnDefinition>
-                </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="{Binding PlayButtonText}" Command="{Binding VideoPlayer.Commands.TogglePlayPause}" />
-                    <TextBlock VerticalAlignment="Center" Margin="10,0,0,0">
-                        <Run Text="{Binding CurTime, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
-                        <Run Text="/"></Run>
-                        <Run Text="{Binding VideoPlayer.Duration, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
-                    </TextBlock>
-                </StackPanel>
 
-                <Slider Grid.Column="1" VerticalAlignment="Center" Margin="10,0,0,0" Maximum="{Binding VideoPlayer.Duration}" Value="{Binding VideoPlayer.CurTime}" IsMoveToPointEnabled="True" SmallChange="{Binding VideoPlayer.Config.Player.SeekOffset}"/>
-
-            </Grid>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Content="开始对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Left}"></Button>
+                <Button Content="结束对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Right}"></Button>
+                <TextBlock Text="   "></TextBlock>
+                <Button Content="{Binding PlayButtonText}" Command="{Binding VideoPlayer.Commands.TogglePlayPause}" />
+                <TextBlock VerticalAlignment="Center" Margin="10,0,0,0">
+                    <Run Text="{Binding CurTime, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
+                    <Run Text="/"></Run>
+                    <Run Text="{Binding VideoPlayer.Duration, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
+                </TextBlock>
+            </StackPanel>
         </Grid>
 
         <!-- 运行日志 -->

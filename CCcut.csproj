@@ -11,8 +11,9 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="FlyleafLib" Version="3.11.9" />
+    <PackageReference Include="FlyleafLib" Version="3.11.11" />
     <PackageReference Include="HandyControl" Version="3.5.1" />
+    <PackageReference Include="Xabe.FFmpeg" Version="6.1.1" />
   </ItemGroup>
 
   <ItemGroup>

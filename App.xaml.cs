@@ -32,7 +32,7 @@ namespace CCcut
                 UIRefresh = true,
                 // 16 = 60 fps
                 UIRefreshInterval = 1,
-                
+
             });
         }
     }
