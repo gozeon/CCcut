@@ -164,7 +164,7 @@ namespace CCcut
         {
             var item = new VideoParagraphModel
             {
-                Title = "段落 " + (Paragraphs.Count() + 1),
+                Title = $"段落({Paragraphs.Count() + 1})",
                 StartTicks = VideoPlayer.CurTime,
                 EndTicks = VideoPlayer.CurTime + TimeSpan.FromSeconds(10).Ticks,
                 ColorHex = GetRandomLightColor(_random)
@@ -204,30 +204,54 @@ namespace CCcut
                 // 确保 Title 不为空且安全截取（防止不足3个字符时报错），并去掉非法文件名字符
                 string safeTitle = string.IsNullOrEmpty(item.Title) ? "Untitled" : item.Title;
                 safeTitle = string.Concat(safeTitle.Split(Path.GetInvalidFileNameChars())).Trim();
-                if (safeTitle.Length > 3) safeTitle = safeTitle.Substring(0, 3).Trim();
+                if (safeTitle.Length > 5) safeTitle = safeTitle.Substring(0, 5).Trim();
 
                 string fileName = $"{safeStart}-{safeEnd}_{safeTitle}{Path.GetExtension(VideoPath)}";
                 string folderName = Path.GetFileNameWithoutExtension(VideoPath);
                 string output = Path.Combine(Settings.FolderParagraphs, folderName, fileName);
 
-                AppendLog($"开始拆分{output}！");
+                var fileinfo = new System.IO.FileInfo(VideoPath);
+                var newTask = new SplitTask
+                {
+                    FileName = fileName,
+                    OutputPath = output,
+                    VideoPath = VideoPath,
+                    Start = TimeSpan.FromTicks(item.StartTicks),
+                    Duration = TimeSpan.FromTicks(item.DurationTicks),
 
-                if (Path.Exists(output))
-                {
-                    AppendLog($"{fileName} 已存在，跳过！");
-                    continue;
-                }
-                IConversion conversion = await FFmpeg.Conversions.FromSnippet.Split(VideoPath, output, TimeSpan.FromTicks(item.StartTicks), TimeSpan.FromTicks(item.DurationTicks));
-                conversion.OnProgress += async (sender, args) =>
-                {
-                    //Show all output from FFmpeg to console
-                    AppendLog($"{fileName} {args.Percent}%");
+                    SourceFileSize = fileinfo.Length,
+                    SourceFileLastWriteTime = fileinfo.LastWriteTimeUtc
                 };
-                IConversionResult result = await conversion.Start();
-                AppendLog($"{fileName} 完成!");
+
+                if (SplitQueueService.Instance.AddTask(newTask))
+                {
+                    AppendLog($"添加任务: {output}");
+                }
+                else
+                {
+                    AppendLog($"存在任务: {output}");
+                }
             }
 
-            AppendLog($"成功拆分 {selectItems.Count()} 个段落!");
+            OpenTaskManagerWindow();
+        }
+
+        [RelayCommand]
+        private void OpenTaskManagerWindow()
+        {
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                TaskManagerWindow? taskManagerWindow = App.Current.Windows.OfType<TaskManagerWindow>().FirstOrDefault();
+                if (taskManagerWindow != null)
+                {
+                    taskManagerWindow.Activate();
+                }
+                else
+                {
+                    var win = new TaskManagerWindow();
+                    win.Show();
+                }
+            });
         }
 
         public static Color GetRandomLightColor(Random random)
