@@ -27,8 +27,10 @@
 
         <!-- 顶部操作栏 -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-            <Button Content="打开视频" Command="{Binding OpenVideoCommand}" />
-            <TextBlock Text="{Binding VideoPath}" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"  TextTrimming="CharacterEllipsis"  Foreground="Gray"/>
+            <Button Content="配置" Command="{Binding OpenSettingsWindowCommand}" />
+            <Button Margin="10,0,0,0" Content="打开视频" Command="{Binding OpenVideoCommand}" />
+            <TextBlock Margin="10,0,0,0" Text="{Binding VideoPath}" VerticalAlignment="Center" TextWrapping="Wrap"  TextTrimming="CharacterEllipsis"  Foreground="Gray"/>
+
         </StackPanel>
 
         <!-- 播放器 -->

@@ -1,0 +1,84 @@
+﻿<Window x:Class="CCcut.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CCcut"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        mc:Ignorable="d"
+        Title="配置" Height="450" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="Auto"></RowDefinition>
+        </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Border Padding="10">
+                <StackPanel Orientation="Vertical">
+                    <!-- FFmpeg 路径 -->
+                    <TextBlock Text="FFmpeg 可执行文件目录" Margin="0,10,0,5"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <!-- 传递参数给 Command -->
+                        <Button Content="选择" DockPanel.Dock="Right" Margin="5,0,0,0"
+                                        Command="{Binding SelectFolderCommand}" CommandParameter="FFmpegBin"/>
+                        <TextBox Text="{Binding Settings.FFmpegBinPath, Mode=TwoWay}" IsReadOnly="True" />
+                    </DockPanel>
+
+                    <TextBlock>FlyLeaf播放器配置，点击
+                        <Hyperlink NavigateUri="https://github.com/SuRGeoNix/Flyleaf/releases" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/SuRGeoNix/Flyleaf/releases</Hyperlink>
+                    下载，完成后解压配置dll和plugin目录
+                    </TextBlock>
+                    <!-- FFmpeg 路径 -->
+                    <TextBlock Text="FFmpeg DLL文件目录" Margin="0,10,0,5"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <!-- 传递参数给 Command -->
+                        <Button Content="选择" DockPanel.Dock="Right" Margin="5,0,0,0"
+                          Command="{Binding SelectFolderCommand}" CommandParameter="FFmpegDll"/>
+                        <TextBox Text="{Binding Settings.FFmpegDllPath, Mode=TwoWay}" IsReadOnly="True" />
+                    </DockPanel>
+
+                    <!-- 插件路径 -->
+                    <TextBlock Text="插件目录" Margin="0,10,0,5"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <!-- 传递参数给 Command -->
+                        <Button Content="选择" DockPanel.Dock="Right" Margin="5,0,0,0"
+                        Command="{Binding SelectFolderCommand}" CommandParameter="Plugins"/>
+                        <TextBox Text="{Binding Settings.PluginsPath, Mode=TwoWay}" IsReadOnly="True" />
+                    </DockPanel>
+
+                    <!-- 录制目录 -->
+                    <TextBlock Text="视频录制输出目录" Margin="0,10,0,5"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <Button Content="选择" DockPanel.Dock="Right" Margin="5,0,0,0"
+                                        Command="{Binding SelectFolderCommand}" CommandParameter="Recordings"/>
+                        <TextBox Text="{Binding Settings.FolderRecordings, Mode=TwoWay}" IsReadOnly="True"/>
+                    </DockPanel>
+
+                    <!-- 截图目录 -->
+                    <TextBlock Text="视频截图保存目录" Margin="0,10,0,5"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <Button Content="选择" DockPanel.Dock="Right" Margin="5,0,0,0"
+                                        Command="{Binding SelectFolderCommand}" CommandParameter="Snapshots"/>
+                        <TextBox Text="{Binding Settings.FolderSnapshots, Mode=TwoWay}" IsReadOnly="True"/>
+                    </DockPanel>
+
+                    <!-- 切片目录 -->
+                    <TextBlock Text="视频切片保存目录" Margin="0,10,0,5"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <Button Content="选择" DockPanel.Dock="Right" Margin="5,0,0,0"
+                          Command="{Binding SelectFolderCommand}" CommandParameter="Paragraphs"/>
+                        <TextBox Text="{Binding Settings.FolderParagraphs, Mode=TwoWay}" IsReadOnly="True"/>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+        <Border Grid.Row="1" Background="#F0F0F0" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="10">
+            <DockPanel LastChildFill="False">
+                <!-- 靠右排列的按钮 -->
+                <Button Content="取消" DockPanel.Dock="Right" Margin="5,0,0,0" Click="Button_Click" />
+                <Button Content="保存" DockPanel.Dock="Right" Style="{StaticResource ButtonPrimary}" Command="{Binding SaveSettingsCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+            </DockPanel>
+        </Border>
+    </Grid>
+
+</Window>

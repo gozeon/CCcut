@@ -2,10 +2,14 @@
 using CommunityToolkit.Mvvm.Input;
 using FlyleafLib;
 using FlyleafLib.MediaPlayer;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Drawing.Printing;
 using System.IO;
+using System.Reflection.Metadata;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using Xabe.FFmpeg;
 
@@ -70,8 +74,12 @@ namespace CCcut
         [ObservableProperty]
         private double _hoverX;          // 鼠标悬停时的实时 X 像素坐标
 
+        private SettingsDto Settings;
+
         public MainViewModel(IFileDialogService fileDialogService)
         {
+            Settings = SettingManager.Load<SettingsDto>();
+
             _fileDialogService = fileDialogService;
 
             Config playerConfig = new Config();
@@ -80,10 +88,14 @@ namespace CCcut
             playerConfig.Player.Stats = true;
             playerConfig.Player.AutoPlay = false;
             playerConfig.Player.SeekOffset = TimeSpan.FromSeconds(1).Ticks;
+            playerConfig.Player.FolderRecordings = Settings.FolderRecordings;
+            playerConfig.Player.FolderSnapshots = Settings.FolderSnapshots;
+            playerConfig.Player.SnapshotFormat = Settings.SnapshotFormat;
 
             VideoPlayer = new Player(playerConfig);
 
             VideoPlayer.PropertyChanged += OnPlayerPropertyChanged;
+          
         }
 
         public void SeekByRatio(double ratio)
@@ -181,6 +193,8 @@ namespace CCcut
         {
             var selectItems = Paragraphs.Where(i => i.IsSelect).ToList();
 
+            FFmpeg.SetExecutablesPath(Settings.FFmpegBinPath);
+
             foreach (var item in selectItems)
             {
                 // 将时间字符串中的 ":" 和 "." 替换为 "-"，使其符合文件名规范
@@ -194,7 +208,7 @@ namespace CCcut
 
                 string fileName = $"{safeStart}-{safeEnd}_{safeTitle}{Path.GetExtension(VideoPath)}";
                 string folderName = Path.GetFileNameWithoutExtension(VideoPath);
-                string output = Path.Combine(VideoPlayer.Config.Player.FolderRecordings, folderName, fileName);
+                string output = Path.Combine(Settings.FolderParagraphs, folderName, fileName);
 
                 AppendLog($"开始拆分{output}！");
 
@@ -266,9 +280,12 @@ namespace CCcut
         }
 
 
-        public void Dispose()
+        [RelayCommand]
+        private void OpenSettingsWindow()
         {
-            VideoPlayer?.Dispose();
+            SettingsWindow settingsWindow = new SettingsWindow();
+            settingsWindow.Owner = Application.Current.MainWindow;
+            settingsWindow.ShowDialog();
         }
 
         internal void BodyThumb_DragDelta(VideoParagraphModel item, double horizontalChange, double canvasWidth)
@@ -330,6 +347,11 @@ namespace CCcut
             }
 
             item.EndTicks = predictedEnd;
+        }
+
+        public void Dispose()
+        {
+            VideoPlayer?.Dispose();
         }
     }
 }
