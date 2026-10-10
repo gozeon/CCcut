@@ -220,5 +220,10 @@ namespace CCcut
             // ⚠️ 【核心关键】：绝对不要写 e.Handled = true; 
             // 这样才能保证 Thumb 内部能够顺利接收到按下信号，从而正常激活你的 DragDelta 拖拽算法！
         }
+
+        private void MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
     }
 }

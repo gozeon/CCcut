@@ -74,6 +74,9 @@ namespace CCcut
         [ObservableProperty]
         private double _hoverX;          // 鼠标悬停时的实时 X 像素坐标
 
+        [ObservableProperty]
+        private string _statusMessage = "准备中...";
+
         private SettingsDto Settings;
 
         public MainViewModel(IFileDialogService fileDialogService)
@@ -95,7 +98,7 @@ namespace CCcut
             VideoPlayer = new Player(playerConfig);
 
             VideoPlayer.PropertyChanged += OnPlayerPropertyChanged;
-          
+
         }
 
         public void SeekByRatio(double ratio)
@@ -127,6 +130,7 @@ namespace CCcut
                         // 播放文件不是通过按钮选择的
                         var url = VideoPlayer.GetSession()?.Url ?? VideoPlayer.Playlist.Selected?.Url;
                         VideoPath = url ?? VideoPath;
+                        StatusMessage = $"处理文件: {VideoPath}";
                     });
                     break;
                 case nameof(Player.CurTime):
@@ -137,6 +141,10 @@ namespace CCcut
                     break;
                 case nameof(Player.Status):
                     PlayButtonText = VideoPlayer.IsPlaying ? "暂停" : "播放";
+                    break;
+
+                case nameof(Player.Host):
+                    StatusMessage = "就绪中...";
                     break;
             }
         }
