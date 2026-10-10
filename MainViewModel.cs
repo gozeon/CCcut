@@ -333,8 +333,16 @@ namespace CCcut
                 predictedStart = VideoPlayer.Duration - item.DurationTicks;
                 predictedEnd = VideoPlayer.Duration;
             }
-            item.StartTicks = predictedStart;
-            item.EndTicks = predictedEnd;
+
+            // 只有值改变，才触发赋值通知，优化渲染
+            if (item.StartTicks != predictedStart)
+            {
+                item.StartTicks = predictedStart;
+            }
+            if (item.EndTicks != predictedEnd)
+            {
+                item.EndTicks = predictedEnd;
+            }
 
         }
 
@@ -354,7 +362,12 @@ namespace CCcut
                 predictedStart = item.EndTicks - minTicks;
             }
 
-            item.StartTicks = predictedStart;
+            // 只有值改变，才触发赋值通知，优化渲染
+            if (item.StartTicks != predictedStart)
+            {
+                item.StartTicks = predictedStart;
+            }
+
         }
 
         internal void RightThumb_DragDelta(VideoParagraphModel item, double horizontalChange, double canvasWidth)
@@ -374,7 +387,11 @@ namespace CCcut
                 predictedEnd = item.StartTicks + minTicks;
             }
 
-            item.EndTicks = predictedEnd;
+            // 只有值改变，才触发赋值通知，优化渲染
+            if (item.EndTicks != predictedEnd)
+            {
+                item.EndTicks = predictedEnd;
+            }
         }
 
         public void Dispose()

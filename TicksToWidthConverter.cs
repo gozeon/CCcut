@@ -32,8 +32,8 @@ namespace CCcut
                 double ratio = (double)durationTicks / allTicks;
 
                
-
-                return ratio * actualWidth;
+                // 延迟可能出现负数，进行兜底
+                return Math.Max(ratio * actualWidth, 0.0);
             }
             catch
             {
