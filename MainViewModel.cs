@@ -124,6 +124,9 @@ namespace CCcut
                 case nameof(Player.Duration):
                     Application.Current.Dispatcher.Invoke(() =>
                     {
+                        // 播放文件不是通过按钮选择的
+                        var url = VideoPlayer.GetSession()?.Url ?? VideoPlayer.Playlist.Selected?.Url;
+                        VideoPath = url ?? VideoPath;
                     });
                     break;
                 case nameof(Player.CurTime):
@@ -202,11 +205,10 @@ namespace CCcut
                 string safeEnd = TimeSpan.FromTicks(item.EndTicks).ToString(@"dd\.hhmmss\_fff");
 
                 // 确保 Title 不为空且安全截取（防止不足3个字符时报错），并去掉非法文件名字符
-                string safeTitle = string.IsNullOrEmpty(item.Title) ? "Untitled" : item.Title;
-                safeTitle = string.Concat(safeTitle.Split(Path.GetInvalidFileNameChars())).Trim();
+                string safeTitle = GetValidFileName(string.IsNullOrEmpty(item.Title) ? "Untitled" : item.Title);
                 if (safeTitle.Length > 5) safeTitle = safeTitle.Substring(0, 5).Trim();
 
-                string fileName = $"{safeStart}-{safeEnd}_{safeTitle}{Path.GetExtension(VideoPath)}";
+                string fileName = $"{safeTitle}-{safeStart}-{safeEnd}{Path.GetExtension(VideoPath)}";
                 string folderName = Path.GetFileNameWithoutExtension(VideoPath);
                 string output = Path.Combine(Settings.FolderParagraphs, folderName, fileName);
 
@@ -235,6 +237,8 @@ namespace CCcut
 
             OpenTaskManagerWindow();
         }
+
+        private string GetValidFileName(string name) => string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
 
         [RelayCommand]
         private void OpenTaskManagerWindow()

@@ -45,6 +45,9 @@ namespace CCcut
         {
             if (sender is Button button && button.Tag is string taskId)
             {
+                // 强制清除当前界面的焦点，使单元格安全释放
+                Keyboard.ClearFocus();
+
                 SplitQueueService.Instance.DeleteTaskRecord(taskId);
             }
         }
