@@ -13,11 +13,63 @@ namespace CCcut
         public static SplitQueueService Instance => _instance.Value;
         public ObservableCollection<SplitTask> TaskQueue { get; } = new();
         private readonly SemaphoreSlim _signal = new(0);
+        private CancellationTokenSource? _loopCts;
         private bool _isLoopRunning = false;
+        private int _waitingCount, _processingCount, _completedCount, _canceledCount, _failedCount;
+        public int WaitingCount { get => _waitingCount; private set => SetProperty(ref _waitingCount, value); }
+        public int ProcessingCount { get => _processingCount; private set => SetProperty(ref _processingCount, value); }
+        public int CompletedCount { get => _completedCount; private set => SetProperty(ref _completedCount, value); }
+        public int CanceledCount { get => _canceledCount; private set => SetProperty(ref _canceledCount, value); }
+        public int FailedCount { get => _failedCount; private set => SetProperty(ref _failedCount, value); }
+        public int FinishedCount => CompletedCount + CanceledCount + FailedCount;
+        public int TotalCount => TaskQueue.Count;
 
         private SplitQueueService()
         {
             StartProcessingLoop();
+
+            TaskQueue.CollectionChanged += TaskQueue_CollectionChanged;
+        }
+
+        private void TaskQueue_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems is not null)
+            {
+                foreach (SplitTask t in e.OldItems)
+                {
+                    t.PropertyChanged -= T_PropertyChanged;
+                }
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (SplitTask t in e.NewItems)
+                {
+                    t.PropertyChanged += T_PropertyChanged;
+                }
+            }
+
+            Recalculate();
+        }
+
+        private void T_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SplitTask.Status))
+            {
+                Recalculate();
+            }
+        }
+
+        private void Recalculate()
+        {
+            WaitingCount = TaskQueue.Count(t => t.Status == TaskStatus.Waiting);
+            ProcessingCount = TaskQueue.Count(t => t.Status == TaskStatus.Processing);
+            CompletedCount = TaskQueue.Count(t => t.Status == TaskStatus.Completed);
+            CanceledCount = TaskQueue.Count(t => t.Status == TaskStatus.Canceled);
+            FailedCount = TaskQueue.Count(t => t.Status == TaskStatus.Failed);
+
+            OnPropertyChanged(nameof(TotalCount));
+            OnPropertyChanged(nameof(FinishedCount));
         }
 
         public bool AddTask(SplitTask task)
@@ -52,7 +104,7 @@ namespace CCcut
                 if (task.Status == TaskStatus.Waiting)
                 {
                     task.Status = TaskStatus.Canceled;
-                    task.LogMessage = "已在队列中取消";
+                    task.LogMessage = "已取消!";
                 }
                 else if (task.Status == TaskStatus.Processing)
                 {
@@ -66,11 +118,18 @@ namespace CCcut
             if (_isLoopRunning) return;
             _isLoopRunning = true;
 
+            _loopCts = new CancellationTokenSource();
+            var loopToken = _loopCts.Token;
+
             Task.Run(async () =>
             {
-                while (true)
+                while (!loopToken.IsCancellationRequested)
                 {
-                    await _signal.WaitAsync();
+                    try
+                    {
+                        await _signal.WaitAsync(loopToken);
+                    }
+                    catch (OperationCanceledException) { break; }
 
                     SplitTask? currentTask = null;
                     lock (TaskQueue)
@@ -79,12 +138,12 @@ namespace CCcut
                     }
 
                     if (currentTask == null) continue;
-                    await ProcessTaskAsync(currentTask);
+                    await ProcessTaskAsync(currentTask, loopToken);
                 }
-            });
+            }, loopToken);
         }
 
-        private async Task ProcessTaskAsync(SplitTask task)
+        private async Task ProcessTaskAsync(SplitTask task, CancellationToken loopToken)
         {
             task.Status = TaskStatus.Processing;
             task.LogMessage = "开始拆分...";
@@ -99,6 +158,9 @@ namespace CCcut
 
             // temp file
             string tempOutputPath = task.OutputPath + "_tmp" + System.IO.Path.GetExtension(task.FileName);
+
+            // 同时监听两个取消事件
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(loopToken, task.Cts.Token);
 
             try
             {
@@ -115,7 +177,7 @@ namespace CCcut
                     task.LogMessage = $"处理中: {args.Duration} / {args.TotalLength} ";
                 };
 
-                IConversionResult result = await conversion.Start(task.Cts.Token);
+                IConversionResult result = await conversion.Start(linked.Token);
 
                 if (System.IO.File.Exists(tempOutputPath))
                 {
@@ -201,6 +263,21 @@ namespace CCcut
                 {
                     TaskQueue.Remove(task);
                 });
+            }
+        }
+    
+        public async Task StopAsync()
+        {
+            _loopCts?.Cancel();
+            _signal.Release();
+
+            foreach (var t in TaskQueue)
+            {
+                if (t.Status == TaskStatus.Waiting)
+                {
+                    t.Status = TaskStatus.Canceled;
+                    t.LogMessage = "已取消!";
+                }
             }
         }
     }

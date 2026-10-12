@@ -98,6 +98,23 @@ namespace CCcut
             VideoPlayer = new Player(playerConfig);
 
             VideoPlayer.PropertyChanged += OnPlayerPropertyChanged;
+            SplitQueueService.Instance.PropertyChanged += Instance_PropertyChanged;
+
+        }
+        private void Instance_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            var totalCount = SplitQueueService.Instance.TotalCount;
+            var waitingCount = SplitQueueService.Instance.WaitingCount;
+            var finishedCount = SplitQueueService.Instance.FinishedCount;
+            var processingCount = SplitQueueService.Instance.ProcessingCount;
+            var failedCount = SplitQueueService.Instance.FailedCount;
+
+            StatusMessage = $"拆分队列: {processingCount} 处理中 / {waitingCount} 待处理";
+            if (e.PropertyName == nameof(SplitQueueService.FinishedCount) && totalCount!=0 && finishedCount == totalCount)
+            {
+                AppendLog($"全部完成: {finishedCount} 完成, {failedCount} 失败 ");
+                StatusMessage = $"目标文件: {VideoPath}";
+            }
 
         }
 
@@ -130,7 +147,7 @@ namespace CCcut
                         // 播放文件不是通过按钮选择的
                         var url = VideoPlayer.GetSession()?.Url ?? VideoPlayer.Playlist.Selected?.Url;
                         VideoPath = url ?? VideoPath;
-                        StatusMessage = $"处理文件: {VideoPath}";
+                        StatusMessage = $"目标文件: {VideoPath}";
                     });
                     break;
                 case nameof(Player.CurTime):
@@ -140,7 +157,18 @@ namespace CCcut
                     });
                     break;
                 case nameof(Player.Status):
-                    PlayButtonText = VideoPlayer.IsPlaying ? "暂停" : "播放";
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        PlayButtonText = VideoPlayer.IsPlaying ? "暂停" : "播放";
+
+                        if (VideoPlayer.Status == Status.Failed)
+                        {
+                            AppendLog("播放器播放失败，请重新选择文件!");
+                            StatusMessage = "播放失败，请重试.";
+                        }
+                    });
+                    
+                   
                     break;
 
                 case nameof(Player.Host):
