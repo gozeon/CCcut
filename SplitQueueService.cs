@@ -157,7 +157,7 @@ namespace CCcut
             }
 
             // temp file
-            string tempOutputPath = task.OutputPath + "_tmp" + System.IO.Path.GetExtension(task.FileName);
+            string tempOutputPath = System.IO.Path.GetTempFileName() + System.IO.Path.GetExtension(task.FileName);
 
             // 同时监听两个取消事件
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(loopToken, task.Cts.Token);
