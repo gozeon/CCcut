@@ -109,6 +109,12 @@ namespace CCcut
             }
             
         }
+
+        protected override async void OnExit(ExitEventArgs e)
+        {
+            await SplitQueueService.Instance.StopAsync();
+            base.OnExit(e);
+        }
     }
 
 }
