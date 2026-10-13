@@ -208,6 +208,11 @@ namespace CCcut
         [RelayCommand]
         private void AddParagraph()
         {
+            if (string.IsNullOrEmpty(VideoPath))
+            {
+                return;
+            }
+
             var item = new VideoParagraphModel
             {
                 Title = $"段落({Paragraphs.Count() + 1})",
