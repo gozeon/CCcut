@@ -8,7 +8,8 @@
         xmlns:fl="clr-namespace:FlyleafLib.Controls.WPF;assembly=FlyleafLib"
         xmlns:hc="https://handyorg.github.io/handycontrol"
         Icon="icon.ico"
-        Title="CCcut" Height="600" Width="900">
+        Title="CCcut" Height="600" Width="900"
+        PreviewKeyDown="Window_PreviewKeyDown">
 
     <Window.Resources>
         <!-- 声明转换器资源 -->
@@ -28,6 +29,9 @@
 
             <MenuItem Header="队列" Command="{Binding OpenTaskManagerWindowCommand}"></MenuItem>
             <MenuItem Header="设置" Command="{Binding OpenSettingsWindowCommand}"></MenuItem>
+            <MenuItem Header="帮助">
+                <MenuItem Header="快捷键说明" Command="{Binding OpenShortcutsWindowCommand}"></MenuItem>
+            </MenuItem>
         </Menu>
         <Rectangle DockPanel.Dock="Top" Height=".1" Fill="Gray" Margin="0,0,0,10"/>
         <StatusBar DockPanel.Dock="Bottom">
@@ -60,14 +64,25 @@
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"></ColumnDefinition>
-                        <ColumnDefinition Width="240"></ColumnDefinition>
+                        <!-- 加宽以容纳时间区间文本 + 每项删除按钮 -->
+                        <ColumnDefinition Width="300"></ColumnDefinition>
                     </Grid.ColumnDefinitions>
 
                     <!-- Flyleaf 视频播放器渲染控件 -->
                     <fl:FlyleafHost Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"  Player="{Binding VideoPlayer}">
                     </fl:FlyleafHost>
 
-                    <ListBox Grid.Column="1" Margin="10,0,0,0" ItemsSource="{Binding Paragraphs}" SelectedItem="{Binding ActiveParagraph, Mode=TwoWay}" HorizontalContentAlignment ="Stretch">
+                    <ListBox Grid.Column="1" Margin="10,0,0,0" ItemsSource="{Binding Paragraphs}" SelectedItem="{Binding ActiveParagraph, Mode=TwoWay}" HorizontalContentAlignment ="Stretch"
+                             PreviewMouseRightButtonDown="ParagraphList_PreviewMouseRightButtonDown">
+                        <ListBox.ContextMenu>
+                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                <MenuItem Header="新增段落" InputGestureText="Insert / Ctrl+N" Command="{Binding AddParagraphCommand}"/>
+                                <MenuItem Header="删除勾选段落" InputGestureText="Delete" Command="{Binding RemoveParagraphCommand}"/>
+                                <MenuItem Header="删除当前段落" InputGestureText="Shift+Delete" Command="{Binding RemoveActiveParagraphCommand}"/>
+                                <Separator/>
+                                <MenuItem Header="拆分勾选段落" InputGestureText="Ctrl+Enter" Command="{Binding SplitParagraphCommand}"/>
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid>
@@ -75,6 +90,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"></ColumnDefinition>
                                         <ColumnDefinition Width="*"></ColumnDefinition>
+                                        <ColumnDefinition Width="Auto"></ColumnDefinition>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="10"></RowDefinition>
@@ -92,15 +108,23 @@
 
                                     <TextBox Grid.Column="1" Grid.Row="2" Margin="0,10,0,0" Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"></TextBox>
 
+                                    <!-- 每个段落自带的删除按钮 -->
+                                    <Button Grid.Column="2" Grid.Row="1" Grid.RowSpan="2" Margin="8,0,0,0"
+                                            Width="24" Height="24" Padding="0" FontSize="14"
+                                            Content="×" ToolTip="删除该段落"
+                                            Style="{StaticResource ButtonDanger.Small}"
+                                            Command="{Binding DataContext.RemoveParagraphItemCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            CommandParameter="{Binding}"/>
+
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
 
                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,10,0,0" Orientation="Horizontal">
-                        <Button Content="添加段落" Command="{Binding AddParagraphCommand}"></Button>
-                        <Button Style="{StaticResource ButtonDanger}" Margin="10,0,0,0" Content="删除段落" Command="{Binding RemoveParagraphCommand}"></Button>
-                        <Button Style="{StaticResource ButtonInfo}" Margin="10,0,0,0" Content="拆分段落" Command="{Binding SplitParagraphCommand}"></Button>
+                        <Button Content="添加段落" ToolTip="快捷键：Insert 或 Ctrl+N" Command="{Binding AddParagraphCommand}"></Button>
+                        <Button Style="{StaticResource ButtonDanger}" Margin="10,0,0,0" Content="删除勾选" ToolTip="快捷键：Delete（删除所有勾选的段落）" Command="{Binding RemoveParagraphCommand}"></Button>
+                        <Button Style="{StaticResource ButtonInfo}" Margin="10,0,0,0" Content="拆分段落" ToolTip="快捷键：Ctrl+Enter" Command="{Binding SplitParagraphCommand}"></Button>
                     </StackPanel>
                 </Grid>
 
@@ -263,9 +287,9 @@
                             <Run Text="{Binding VideoPlayer.Duration, Converter={StaticResource TicksConverter}, Mode=OneWay}"></Run>
                         </TextBlock>
                         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Button Content="开始对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Left}"></Button>
-                            <Button Style="{StaticResource ButtonInfo}" Margin="10,0,0,0" Content="{Binding PlayButtonText}" Command="{Binding VideoPlayer.Commands.TogglePlayPause}" />
-                            <Button Margin="10,0,0,0" Content="结束对齐游标" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Right}"></Button>
+                            <Button Content="开始对齐游标" ToolTip="快捷键：[" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Left}"></Button>
+                            <Button Style="{StaticResource ButtonInfo}" Margin="10,0,0,0" Content="{Binding PlayButtonText}" ToolTip="快捷键：Space" Command="{Binding VideoPlayer.Commands.TogglePlayPause}" />
+                            <Button Margin="10,0,0,0" Content="结束对齐游标" ToolTip="快捷键：]" Command="{Binding ExecuteAlignToCursorCommand}" CommandParameter="{x:Static local:AlignDirection.Right}"></Button>
                         </StackPanel>
                     </Grid>
 

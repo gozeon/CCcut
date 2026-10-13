@@ -21,6 +21,13 @@ namespace CCcut
         Right  // 对齐右边缘
     }
 
+    public enum ParagraphEdge
+    {
+        Start, // 仅调整开始时间
+        End,   // 仅调整结束时间
+        Both   // 整体平移
+    }
+
     internal partial class MainViewModel : ObservableObject, IDisposable
     {
         private readonly Random _random = new Random();
@@ -227,6 +234,29 @@ namespace CCcut
             }
         }
 
+        // 删除当前选中的单个段落（用于 Delete 的区分：Shift+Delete）
+        [RelayCommand]
+        private void RemoveActiveParagraph()
+        {
+            RemoveParagraphItem(ActiveParagraph);
+        }
+
+        // 删除指定的单个段落（用于列表项内的删除按钮）
+        [RelayCommand]
+        private void RemoveParagraphItem(VideoParagraphModel? item)
+        {
+            if (item == null) return;
+
+            Paragraphs.Remove(item);
+
+            if (ReferenceEquals(ActiveParagraph, item))
+            {
+                ActiveParagraph = null;
+            }
+
+            AppendLog($"删除段落: {item.Title}");
+        }
+
         [RelayCommand]
         private async Task SplitParagraph()
         {
@@ -350,6 +380,65 @@ namespace CCcut
             }
         }
 
+        // 通过键盘微调当前段落：Start=仅改开始时间，End=仅改结束时间，Both=整体平移
+        internal void NudgeActiveParagraph(long deltaTicks, ParagraphEdge edge)
+        {
+            var item = ActiveParagraph;
+            if (item == null || VideoPlayer == null || VideoPlayer.Duration <= 0) return;
+
+            long videoDuration = VideoPlayer.Duration;
+            long minTicks = TimeSpan.FromSeconds(5).Ticks;
+
+            switch (edge)
+            {
+                case ParagraphEdge.Start:
+                    {
+                        long newStart = item.StartTicks + deltaTicks;
+                        newStart = Math.Max(0, newStart);
+                        newStart = Math.Min(newStart, item.EndTicks - minTicks);
+
+                        if (newStart != item.StartTicks)
+                        {
+                            item.StartTicks = newStart;
+                        }
+                        break;
+                    }
+                case ParagraphEdge.End:
+                    {
+                        long newEnd = item.EndTicks + deltaTicks;
+                        newEnd = Math.Min(videoDuration, newEnd);
+                        newEnd = Math.Max(newEnd, item.StartTicks + minTicks);
+
+                        if (newEnd != item.EndTicks)
+                        {
+                            item.EndTicks = newEnd;
+                        }
+                        break;
+                    }
+                default:
+                    {
+                        long durationTicks = item.DurationTicks;
+                        long newStart = item.StartTicks + deltaTicks;
+
+                        if (newStart < 0)
+                        {
+                            newStart = 0;
+                        }
+                        else if (newStart + durationTicks > videoDuration)
+                        {
+                            newStart = videoDuration - durationTicks;
+                        }
+
+                        if (newStart != item.StartTicks)
+                        {
+                            item.StartTicks = newStart;
+                            item.EndTicks = newStart + durationTicks;
+                        }
+                        break;
+                    }
+            }
+        }
+
 
         [RelayCommand]
         private void OpenSettingsWindow()
@@ -357,6 +446,17 @@ namespace CCcut
             SettingsWindow settingsWindow = new SettingsWindow();
             settingsWindow.Owner = Application.Current.MainWindow;
             settingsWindow.ShowDialog();
+        }
+
+        // 打开快捷键使用说明窗口
+        [RelayCommand]
+        private void OpenShortcutsWindow()
+        {
+            var shortcutsWindow = new ShortcutsWindow
+            {
+                Owner = Application.Current.MainWindow
+            };
+            shortcutsWindow.ShowDialog();
         }
 
         internal void BodyThumb_DragDelta(VideoParagraphModel item, double horizontalChange, double canvasWidth)

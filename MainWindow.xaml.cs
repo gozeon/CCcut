@@ -225,5 +225,98 @@ namespace CCcut
         {
             this.Close();
         }
+
+        // 右键点击段落列表时，先选中鼠标所在行的段落，右键菜单才会作用于它
+        private void ParagraphList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not ListBox listBox) return;
+
+            var item = ItemsControl.ContainerFromElement(listBox, (DependencyObject)e.OriginalSource) as ListBoxItem;
+            if (item != null)
+            {
+                item.IsSelected = true;
+            }
+        }
+
+        // 全局键盘快捷键：更快捷地对段落进行增、删、改
+        // Insert / Ctrl+N  新增段落          Space            播放 / 暂停
+        // Delete           删除勾选的段落     Shift+Delete     删除当前单个段落
+        // Ctrl+Enter       拆分段落
+        // [                开始对齐游标        ]                结束对齐游标
+        // ← / →            整体平移当前段落（1 秒）
+        // Shift + ← / →    调整当前段落开始时间（1 秒）
+        // Ctrl  + ← / →    调整当前段落结束时间（1 秒）
+        // Ctrl+Shift + ←/→ 整体平移当前段落（0.1 秒，精细微调）
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (VM == null) return;
+
+            // 正在编辑文本框（如段落标题）时，不拦截按键，避免影响正常输入
+            if (Keyboard.FocusedElement is TextBoxBase) return;
+
+            bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+            bool shift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+
+            switch (e.Key)
+            {
+                case Key.Insert:
+                case Key.N when ctrl:
+                    VM.AddParagraphCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+
+                case Key.Delete:
+                    // Shift+Delete 删除当前单个段落，否则删除所有勾选的段落
+                    if (shift)
+                    {
+                        VM.RemoveActiveParagraphCommand.Execute(null);
+                    }
+                    else
+                    {
+                        VM.RemoveParagraphCommand.Execute(null);
+                    }
+                    e.Handled = true;
+                    break;
+
+                case Key.Enter when ctrl:
+                    VM.SplitParagraphCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+
+                case Key.Space:
+                    VM.VideoPlayer?.Commands.TogglePlayPause.Execute(null);
+                    e.Handled = true;
+                    break;
+
+                case Key.OemOpenBrackets:
+                    VM.ExecuteAlignToCursorCommand.Execute(AlignDirection.Left);
+                    e.Handled = true;
+                    break;
+
+                case Key.OemCloseBrackets:
+                    VM.ExecuteAlignToCursorCommand.Execute(AlignDirection.Right);
+                    e.Handled = true;
+                    break;
+
+                case Key.Left:
+                case Key.Right:
+                    if (VM.ActiveParagraph == null || VM.VideoPlayer == null) return;
+
+                    long direction = e.Key == Key.Right ? 1 : -1;
+
+                    // Ctrl+Shift 精细微调（0.1 秒），否则 1 秒
+                    long stepTicks = (ctrl && shift)
+                        ? TimeSpan.FromMilliseconds(100).Ticks
+                        : TimeSpan.FromSeconds(1).Ticks;
+
+                    ParagraphEdge edge = ParagraphEdge.Both;
+                    if (shift && !ctrl) edge = ParagraphEdge.Start;   // Shift：改开始时间
+                    else if (ctrl && !shift) edge = ParagraphEdge.End; // Ctrl：改结束时间
+
+                    VM.NudgeActiveParagraph(direction * stepTicks, edge);
+                    e.Handled = true;
+                    break;
+            }
+        }
     }
 }
