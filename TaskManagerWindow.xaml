@@ -28,7 +28,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="日志提示" Binding="{Binding LogMessage}" Width="1.5*"/>
-                <DataGridTemplateColumn Header="操作" Width="240">
+                <DataGridTemplateColumn Header="操作" Width="320">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
@@ -44,7 +44,14 @@
                                         Margin="5,0,0,0"
                                         Style="{StaticResource ButtonPrimary.Small}"
                                         IsEnabled="{Binding Status, Converter={StaticResource StatusToBoolConverter}, ConverterParameter=open}"/>
-                            
+
+                                <Button Content="目录" 
+                                        Click="Button_Click_3"
+                                        Tag="{Binding Id}"
+                                        Margin="5,0,0,0"
+                                        Style="{StaticResource ButtonDefault.Small}"
+                                        IsEnabled="{Binding Status, Converter={StaticResource StatusToBoolConverter}, ConverterParameter=open}"/>
+
                                 <Button Content="删除" 
                                         Click="Button_Click_2"
                                         Tag="{Binding Id}"

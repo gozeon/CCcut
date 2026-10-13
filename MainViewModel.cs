@@ -459,6 +459,41 @@ namespace CCcut
             shortcutsWindow.ShowDialog();
         }
 
+        // 打开当前视频的切片输出目录（<切片目录>/<视频名>/）
+        [RelayCommand]
+        private void OpenParagraphFolder()
+        {
+            string folder = Settings.FolderParagraphs;
+
+            if (!string.IsNullOrEmpty(VideoPath))
+            {
+                string folderName = Path.GetFileNameWithoutExtension(VideoPath);
+                if (!string.IsNullOrEmpty(folderName))
+                {
+                    folder = Path.Combine(Settings.FolderParagraphs, folderName);
+                }
+            }
+
+            try
+            {
+                if (!Directory.Exists(folder))
+                {
+                    Directory.CreateDirectory(folder);
+                }
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder)
+                {
+                    UseShellExecute = true
+                });
+
+                AppendLog($"打开切片目录: {folder}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"打开切片目录失败: {ex.Message}");
+            }
+        }
+
         internal void BodyThumb_DragDelta(VideoParagraphModel item, double horizontalChange, double canvasWidth)
         {
             double ticksPerPixel = (double)VideoPlayer.Duration / canvasWidth;

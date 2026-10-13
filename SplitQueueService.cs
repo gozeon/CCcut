@@ -251,6 +251,46 @@ namespace CCcut
             }
         }
 
+        // 打开拆分结果所在的目录，并尽可能选中该文件
+        public void OpenTaskFolder(string taskId)
+        {
+            var task = TaskQueue.FirstOrDefault(t => t.Id == taskId);
+            if (task == null || task.Status != TaskStatus.Completed) return;
+
+            try
+            {
+                string? folder = System.IO.Path.GetDirectoryName(task.OutputPath);
+                if (string.IsNullOrEmpty(folder) || !System.IO.Directory.Exists(folder))
+                {
+                    task.LogMessage = "目录不存在!";
+                    return;
+                }
+
+                if (System.IO.File.Exists(task.OutputPath))
+                {
+                    // 打开目录并选中输出文件
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"/select,\"{task.OutputPath}\"",
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    // 文件已被移动或删除时，退化为直接打开所在目录
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder)
+                    {
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"无法打开目录: {ex.Message}");
+            }
+        }
+
         public void DeleteTaskRecord(string taskId)
         {
             var task = TaskQueue.FirstOrDefault(t => t.Id == taskId);

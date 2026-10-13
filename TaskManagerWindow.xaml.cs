@@ -51,5 +51,14 @@ namespace CCcut
                 SplitQueueService.Instance.DeleteTaskRecord(taskId);
             }
         }
+
+        // 打开拆分结果所在的目录
+        private void Button_Click_3(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string taskId)
+            {
+                SplitQueueService.Instance.OpenTaskFolder(taskId);
+            }
+        }
     }
 }
