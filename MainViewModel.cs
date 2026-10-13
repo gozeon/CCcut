@@ -234,6 +234,8 @@ namespace CCcut
 
             FFmpeg.SetExecutablesPath(Settings.FFmpegBinPath);
 
+            var idx = 0;
+
             foreach (var item in selectItems)
             {
                 // 将时间字符串中的 ":" 和 "." 替换为 "-"，使其符合文件名规范
@@ -264,6 +266,7 @@ namespace CCcut
                 if (SplitQueueService.Instance.AddTask(newTask))
                 {
                     AppendLog($"添加任务: {output}");
+                    idx += 1;
                 }
                 else
                 {
@@ -271,7 +274,11 @@ namespace CCcut
                 }
             }
 
-            OpenTaskManagerWindow();
+            if (idx > 0)
+            {
+                AppendLog($"创建 {idx} 个拆分任务!");
+                OpenTaskManagerWindow();
+            }
         }
 
         private string GetValidFileName(string name) => string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
