@@ -156,8 +156,10 @@ namespace CCcut
                 return;
             }
 
-            // temp file
-            string tempOutputPath = System.IO.Path.GetTempFileName() + System.IO.Path.GetExtension(task.FileName);
+            // 临时文件：用唯一名拼接扩展名，避免 GetTempFileName() 额外创建的空文件残留
+            string tempOutputPath = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                $"{Guid.NewGuid():N}{System.IO.Path.GetExtension(task.FileName)}");
 
             // 同时监听两个取消事件
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(loopToken, task.Cts.Token);
@@ -181,12 +183,29 @@ namespace CCcut
 
                 if (System.IO.File.Exists(tempOutputPath))
                 {
-                    System.IO.File.Move(tempOutputPath, task.OutputPath);
+                    // 输出目录可能尚不存在，File.Move 会抛 DirectoryNotFoundException，这里先确保目录存在
+                    string? outputDir = System.IO.Path.GetDirectoryName(task.OutputPath);
+                    if (!string.IsNullOrEmpty(outputDir) && !System.IO.Directory.Exists(outputDir))
+                    {
+                        System.IO.Directory.CreateDirectory(outputDir);
+                    }
+
+                    // overwrite: true 兜底处理极端情况下目标已存在（如并发/重复文件）导致的 IOException
+                    System.IO.File.Move(tempOutputPath, task.OutputPath, overwrite: true);
                 }
 
-                task.Status = TaskStatus.Completed;
-                task.Progress = 100;
-                task.LogMessage = "完成!";
+                // 以最终产物是否存在为准：临时文件被清理或未生成时，不能标记为完成
+                if (System.IO.File.Exists(task.OutputPath))
+                {
+                    task.Status = TaskStatus.Completed;
+                    task.Progress = 100;
+                    task.LogMessage = "完成!";
+                }
+                else
+                {
+                    task.Status = TaskStatus.Failed;
+                    task.LogMessage = "失败: 未生成输出文件（临时文件可能已被清理）";
+                }
             }
             catch (OperationCanceledException)
             {
