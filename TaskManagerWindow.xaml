@@ -14,8 +14,34 @@
     </Window.Resources>
 
     <Grid Margin="10">
-        <DataGrid x:Name="TaskGrid" AutoGenerateColumns="False" IsReadOnly="True" ItemsSource="{Binding TaskQueue}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 批量操作 -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="取消全部" Click="CancelAll_Click"
+                    Style="{StaticResource ButtonDefault}"/>
+            <Button Content="一键清空" Click="ClearAll_Click" Margin="10,0,0,0"
+                    Style="{StaticResource ButtonDanger}"/>
+            <Button Content="打开输出目录" Click="OpenOutputFolder_Click" Margin="10,0,0,0"
+                    Style="{StaticResource ButtonPrimary}"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="1" x:Name="TaskGrid" AutoGenerateColumns="False" IsReadOnly="True" ItemsSource="{Binding TaskQueue}">
             <DataGrid.Columns>
+                <DataGridTemplateColumn Width="40">
+                    <DataGridTemplateColumn.Header>
+                        <CheckBox Click="SelectAll_Click" ToolTip="全选 / 取消全选"/>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox HorizontalAlignment="Center"
+                                      IsChecked="{Binding IsSelect, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="2*"/>
                 <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="120"/>
                 <DataGridTemplateColumn Header="进度" Width="120">

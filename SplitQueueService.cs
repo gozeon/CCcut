@@ -113,6 +113,31 @@ namespace CCcut
             }
         }
 
+        // 批量操作的目标：优先勾选的任务，未勾选任何任务时作用于全部
+        private List<SplitTask> GetOperationTargets()
+        {
+            var checkedTasks = TaskQueue.Where(t => t.IsSelect).ToList();
+            return checkedTasks.Count > 0 ? checkedTasks : TaskQueue.ToList();
+        }
+
+        // 批量取消：等待中的标记为已取消，处理中的触发取消
+        public void CancelTasks()
+        {
+            foreach (var task in GetOperationTargets())
+            {
+                switch (task.Status)
+                {
+                    case TaskStatus.Waiting:
+                        task.Status = TaskStatus.Canceled;
+                        task.LogMessage = "已取消!";
+                        break;
+                    case TaskStatus.Processing:
+                        task.Cts.Cancel(); // 触发 FFmpeg 异步取消
+                        break;
+                }
+            }
+        }
+
         private void StartProcessingLoop()
         {
             if (_isLoopRunning) return;
@@ -323,6 +348,42 @@ namespace CCcut
                     TaskQueue.Remove(task);
                 });
             }
+        }
+
+        // 打开切片输出根目录
+        public void OpenOutputFolder()
+        {
+            try
+            {
+                var settings = SettingManager.Load<SettingsDto>();
+                string folder = settings.FolderParagraphs;
+
+                if (!System.IO.Directory.Exists(folder))
+                {
+                    System.IO.Directory.CreateDirectory(folder);
+                }
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder)
+                {
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"无法打开输出目录: {ex.Message}");
+            }
+        }
+
+        // 一键清空：移除目标中非处理中的任务记录（处理中的任务需先取消）
+        public void ClearTasks()
+        {
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                foreach (var task in GetOperationTargets().Where(t => t.Status != TaskStatus.Processing))
+                {
+                    TaskQueue.Remove(task);
+                }
+            });
         }
     
         public async Task StopAsync()

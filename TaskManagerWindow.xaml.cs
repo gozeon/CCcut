@@ -60,5 +60,43 @@ namespace CCcut
                 SplitQueueService.Instance.OpenTaskFolder(taskId);
             }
         }
+
+        // 取消全部任务
+        private void CancelAll_Click(object sender, RoutedEventArgs e)
+        {
+            SplitQueueService.Instance.CancelTasks();
+        }
+
+        // 一键清空任务记录
+        private void ClearAll_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "确定要清空所有任务记录吗？（处理中的任务不会被移除，请先取消）",
+                "确认清空",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.OK) return;
+
+            SplitQueueService.Instance.ClearTasks();
+        }
+
+        // 打开切片输出目录
+        private void OpenOutputFolder_Click(object sender, RoutedEventArgs e)
+        {
+            SplitQueueService.Instance.OpenOutputFolder();
+        }
+
+        // 表头全选 / 取消全选
+        private void SelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not CheckBox checkBox) return;
+
+            bool selectAll = checkBox.IsChecked == true;
+            foreach (var task in SplitQueueService.Instance.TaskQueue)
+            {
+                task.IsSelect = selectAll;
+            }
+        }
     }
 }

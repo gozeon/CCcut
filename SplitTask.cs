@@ -33,6 +33,9 @@ namespace CCcut
         [ObservableProperty]
         private string _logMessage = "等待中...";
 
+        [ObservableProperty]
+        private bool _isSelect;
+
         // 用于取消单个任务
         public CancellationTokenSource Cts { get; set; } = new();
 
