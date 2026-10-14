@@ -34,8 +34,8 @@ namespace CCcut
         private readonly IFileDialogService _fileDialogService;
 
         public ObservableCollection<VideoParagraphModel> Paragraphs { get; set; } = new ObservableCollection<VideoParagraphModel>();
-        public VideoParagraphModel _activeParagraph = default!;
-        public VideoParagraphModel ActiveParagraph {
+        public VideoParagraphModel? _activeParagraph;
+        public VideoParagraphModel? ActiveParagraph {
             get => _activeParagraph;
             set
             {
@@ -49,7 +49,7 @@ namespace CCcut
             }
         }
 
-        private void UpdateParagraphZIndices(VideoParagraphModel activeParagraph)
+        private void UpdateParagraphZIndices(VideoParagraphModel? activeParagraph)
         {
             if (Paragraphs == null) return;
             foreach (var p in Paragraphs)
@@ -108,6 +108,18 @@ namespace CCcut
             SplitQueueService.Instance.PropertyChanged += Instance_PropertyChanged;
 
         }
+
+        // VideoPath（打开的视频地址）变化时触发：切换视频后清空上一部视频遗留的段落
+        partial void OnVideoPathChanged(string value)
+        {
+            if (Paragraphs.Count > 0)
+            {
+                Paragraphs.Clear();
+                ActiveParagraph = null;
+                AppendLog("播放文件已切换，已清空原有段落");
+            }
+        }
+
         private void Instance_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             var totalCount = SplitQueueService.Instance.TotalCount;
