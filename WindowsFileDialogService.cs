@@ -13,6 +13,10 @@ namespace CCcut
         string? OpenVideoFile(string filter);
 
         string? OpenFolder(string title);
+
+        string? OpenFile(string filter);
+
+        string? SaveFile(string filter, string defaultFileName);
     }
 
     public class WindowsFileDialogService : IFileDialogService
@@ -39,6 +43,38 @@ namespace CCcut
             };
 
             if(dialog.ShowDialog() == true)
+            {
+                return dialog.FileName;
+            }
+
+            return null;
+        }
+
+        public string? OpenFile(string filter)
+        {
+            OpenFileDialog dialog = new OpenFileDialog
+            {
+                Filter = filter
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                return dialog.FileName;
+            }
+
+            return null;
+        }
+
+        public string? SaveFile(string filter, string defaultFileName)
+        {
+            SaveFileDialog dialog = new SaveFileDialog
+            {
+                Filter = filter,
+                FileName = defaultFileName,
+                DefaultExt = ".cccut"
+            };
+
+            if (dialog.ShowDialog() == true)
             {
                 return dialog.FileName;
             }

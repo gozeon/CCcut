@@ -8,6 +8,8 @@ using System.ComponentModel;
 using System.Drawing.Printing;
 using System.IO;
 using System.Reflection.Metadata;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -85,6 +87,19 @@ namespace CCcut
         private string _statusMessage = "准备中...";
 
         private SettingsDto Settings;
+
+        // 自定义文件反序列化选项
+        private static readonly JsonSerializerOptions ProjectJsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            WriteIndented = true,
+            IgnoreReadOnlyProperties = true,
+            // 保留中文等非 ASCII 字符，避免被转义成 \uXXXX
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        // 打开自定义文件后，等待视频加载完成再应用的段落
+        private List<ProjectParagraphDto>? _pendingProjectParagraphs;
 
         public MainViewModel(IFileDialogService fileDialogService)
         {
@@ -167,6 +182,9 @@ namespace CCcut
                         var url = VideoPlayer.GetSession()?.Url ?? VideoPlayer.Playlist.Selected?.Url;
                         VideoPath = url ?? VideoPath;
                         StatusMessage = $"目标文件: {VideoPath}";
+
+                        // 正在载入自定义文件时，视频就绪后再应用其中的段落
+                        ApplyPendingProjectParagraphs();
                     });
                     break;
                 case nameof(Player.CurTime):
@@ -184,6 +202,9 @@ namespace CCcut
                         {
                             AppendLog("播放器播放失败，请重新选择文件!");
                             StatusMessage = "播放失败，请重试.";
+
+                            // 视频打开失败时也要把自定义文件中的段落显示出来
+                            ApplyPendingProjectParagraphs();
                         }
                     });
                     
@@ -214,6 +235,184 @@ namespace CCcut
                 VideoPlayer.Open(VideoPath);
 
                 AppendLog($"打开文件 {VideoPath}");
+            }
+        }
+
+        // 打开自定义文件：按文件内容设置配置、打开视频、载入段落
+        [RelayCommand]
+        private void OpenProject()
+        {
+            string? filePath = _fileDialogService.OpenFile("自定义文件 (*.cccut;*.json)|*.cccut;*.json|所有文件 (*.*)|*.*");
+            if (string.IsNullOrEmpty(filePath)) return;
+
+            try
+            {
+                string json = File.ReadAllText(filePath);
+                var project = JsonSerializer.Deserialize<ProjectFileDto>(json, ProjectJsonOptions);
+                if (project == null)
+                {
+                    AppendLog("自定义文件解析失败");
+                    return;
+                }
+
+                // 1. 应用配置
+                if (project.Settings != null)
+                {
+                    Settings = project.Settings;
+                    SettingManager.Save(Settings);
+                    AppendLog("已应用自定义文件中的配置");
+                }
+
+                var paragraphs = project.Paragraphs ?? new List<ProjectParagraphDto>();
+
+                // 2. 处理视频与段落
+                if (!string.IsNullOrEmpty(project.VideoPath) && File.Exists(project.VideoPath))
+                {
+                    if (IsSameVideo(VideoPath, project.VideoPath))
+                    {
+                        // 与当前视频相同：Duration 不会变化，直接替换段落
+                        _pendingProjectParagraphs = null;
+                        ApplyProjectParagraphs(paragraphs);
+                    }
+                    else
+                    {
+                        // 切换视频：等视频就绪后再应用段落，避免被清空逻辑覆盖
+                        _pendingProjectParagraphs = paragraphs;
+                        VideoPath = project.VideoPath;
+                        VideoPlayer.Open(VideoPath);
+                        AppendLog($"打开文件 {VideoPath}");
+                    }
+                }
+                else
+                {
+                    // 没有可用视频时直接应用段落
+                    _pendingProjectParagraphs = null;
+                    ApplyProjectParagraphs(paragraphs);
+
+                    if (!string.IsNullOrEmpty(project.VideoPath))
+                    {
+                        AppendLog($"视频文件不存在: {project.VideoPath}");
+                    }
+                }
+
+                AppendLog($"打开自定义文件: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                _pendingProjectParagraphs = null;
+                AppendLog($"打开自定义文件失败: {ex.Message}");
+                System.Windows.MessageBox.Show($"打开自定义文件失败: {ex.Message}", "错误",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        // 应用自定义文件中的段落到界面
+        private void ApplyProjectParagraphs(IEnumerable<ProjectParagraphDto> paragraphs)
+        {
+            Paragraphs.Clear();
+            ActiveParagraph = null;
+
+            foreach (var dto in paragraphs)
+            {
+                Paragraphs.Add(new VideoParagraphModel
+                {
+                    Title = dto.Title,
+                    StartTicks = dto.StartTicks,
+                    EndTicks = dto.EndTicks,
+                    ColorHex = ParseColor(dto.ColorHex)
+                });
+            }
+
+            AppendLog($"已载入 {Paragraphs.Count} 个段落");
+        }
+
+        // 视频加载完成后应用挂在身上的待处理段落（仅执行一次）
+        private void ApplyPendingProjectParagraphs()
+        {
+            if (_pendingProjectParagraphs == null) return;
+
+            var pending = _pendingProjectParagraphs;
+            _pendingProjectParagraphs = null;
+            ApplyProjectParagraphs(pending);
+        }
+
+        // 解析 #AARRGGBB 颜色，非法或缺失时回退到随机浅色
+        private Color ParseColor(string? hex)
+        {
+            if (!string.IsNullOrWhiteSpace(hex))
+            {
+                try
+                {
+                    if (ColorConverter.ConvertFromString(hex) is Color color)
+                    {
+                        return color;
+                    }
+                }
+                catch
+                {
+                    // 忽略，回退到随机浅色
+                }
+            }
+
+            return GetRandomLightColor(_random);
+        }
+
+        // 保存自定义文件：把当前配置、视频、段落导出为 JSON
+        [RelayCommand]
+        private void SaveProject()
+        {
+            string defaultName = string.IsNullOrEmpty(VideoPath)
+                ? "project.cccut"
+                : Path.GetFileNameWithoutExtension(VideoPath) + ".cccut";
+
+            string? filePath = _fileDialogService.SaveFile(
+                "自定义文件 (*.cccut)|*.cccut|JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*", defaultName);
+            if (string.IsNullOrEmpty(filePath)) return;
+
+            try
+            {
+                var project = new ProjectFileDto
+                {
+                    Settings = Settings,
+                    VideoPath = VideoPath,
+                    Paragraphs = Paragraphs.Select(p => new ProjectParagraphDto
+                    {
+                        Title = p.Title,
+                        StartTicks = p.StartTicks,
+                        EndTicks = p.EndTicks,
+                        ColorHex = ToHex(p.ColorHex)
+                    }).ToList()
+                };
+
+                string json = JsonSerializer.Serialize(project, ProjectJsonOptions);
+                File.WriteAllText(filePath, json);
+
+                AppendLog($"已保存自定义文件: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"保存自定义文件失败: {ex.Message}");
+                System.Windows.MessageBox.Show($"保存自定义文件失败: {ex.Message}", "错误",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        // Color -> "#AARRGGBB"
+        private static string ToHex(Color color)
+            => $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+
+        // 判断两个视频路径是否指向同一个文件
+        private static bool IsSameVideo(string? a, string? b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+
+            try
+            {
+                return string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
             }
         }
 

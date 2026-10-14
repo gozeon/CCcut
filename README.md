@@ -35,6 +35,10 @@ CCcut 是一个基于 .NET / WPF 的桌面视频切片工具：使用 FlyleafLib
 - 录制、截图、切片输出目录
 - 配置持久化到程序目录下的 `config.json`
 
+### 自定义文件（项目 / 会话）
+- 菜单「文件 → 打开自定义文件」可载入一个 JSON 文件，一次性设置配置、打开视频并载入段落
+- 菜单「文件 → 保存自定义文件」可将当前配置、视频、段落导出为同样的 JSON 文件
+
 ## 快捷键
 
 | 快捷键 | 功能 |
@@ -95,6 +99,49 @@ CCcut 是一个基于 .NET / WPF 的桌面视频切片工具：使用 FlyleafLib
 | `FolderParagraphs` | 切片输出目录 | `./Paragraphs` |
 | `SnapshotFormat` | 截图格式 | `png` |
 
+## 自定义文件
+
+菜单「文件 → 打开自定义文件」可载入一个 JSON 格式的项目 / 会话文件，一次性完成：
+
+1. **应用配置**：文件中的 `Settings` 会覆盖当前配置并保存到 `config.json`
+2. **打开视频**：文件中的 `VideoPath` 会被打开
+3. **载入段落**：文件中的 `Paragraphs` 会成为新的段落列表
+
+菜单「文件 → 保存自定义文件」则把**当前**配置、视频与段落导出为同样格式的 JSON（默认文件名为视频名 + `.cccut`）。
+
+示例：
+
+```json
+{
+  "Settings": {
+    "FFmpegBinPath": "D:\\ffmpeg\\bin",
+    "FFmpegDllPath": "D:\\ffmpeg\\dll",
+    "PluginsPath": "",
+    "FolderRecordings": "D:\\out\\recordings",
+    "FolderSnapshots": "D:\\out\\snapshots",
+    "FolderParagraphs": "D:\\out\\paragraphs"
+  },
+  "VideoPath": "D:\\videos\\demo.mp4",
+  "Paragraphs": [
+    { "Title": "开头", "StartTicks": 0, "EndTicks": 100000000, "ColorHex": "#FFA8D8FF" },
+    { "Title": "高能", "StartTicks": 300000000, "EndTicks": 450000000, "ColorHex": "#FFFFD8A8" }
+  ]
+}
+```
+
+字段说明：
+
+| 字段 | 说明 |
+| --- | --- |
+| `Settings` | 可选，应用配置，字段同 `config.json` |
+| `VideoPath` | 可选，要打开的视频路径；文件不存在时仅载入段落 |
+| `Paragraphs[].Title` | 段落标题 |
+| `Paragraphs[].StartTicks` / `EndTicks` | 起止时间，单位 100 纳秒（.NET Ticks，1 秒 = 10000000） |
+| `Paragraphs[].ColorHex` | 可选，`#AARRGGBB` 颜色；省略或非法时随机生成浅色 |
+
+> 字段名大小写不敏感；`.cccut` 与 `.json` 均可作为文件扩展名。
+> 注意：`Settings` 中的播放器相关项（录制 / 截图目录、截图格式）在程序启动时读取，运行中修改需重启后生效；FFmpeg 路径会在下次拆分时生效。
+
 ## 项目结构
 
 | 文件 | 说明 |
@@ -109,6 +156,7 @@ CCcut 是一个基于 .NET / WPF 的桌面视频切片工具：使用 FlyleafLib
 | `SettingsWindow.xaml(.cs)` / `SettingsViewModel.cs` | 设置窗口与逻辑 |
 | `ShortcutsWindow.xaml(.cs)` | 快捷键说明窗口 |
 | `SettingManager.cs` | `config.json` 读写与 `SettingsDto` 定义 |
+| `ProjectFile.cs` | 自定义文件（项目 / 会话）的数据结构 |
 | `WindowsFileDialogService.cs` | 文件 / 文件夹选择服务（`IFileDialogService`） |
 | `*Converter.cs` | 时间字符串、像素、宽度、状态等值转换器 |
 

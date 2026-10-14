@@ -23,6 +23,8 @@
                 <MenuItem Header="选择本地文件" Command="{Binding VideoPlayer.Commands.OpenFromFileDialog}"/>
                 <!--<MenuItem Header="选择本地文件" Command="{Binding OpenVideoCommand}"/>-->
                 <MenuItem Header="从剪贴板打开" Command="{Binding VideoPlayer.Commands.OpenFromClipboard}"/>
+                <MenuItem Header="打开自定义文件" Command="{Binding OpenProjectCommand}"/>
+                <MenuItem Header="保存自定义文件" Command="{Binding SaveProjectCommand}"/>
                 <MenuItem Header="打开切片目录" Command="{Binding OpenParagraphFolderCommand}"/>
                 <Separator/>
                 <MenuItem Header="退出" Click="MenuItem_Click"/>
